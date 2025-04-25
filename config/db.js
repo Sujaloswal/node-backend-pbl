@@ -98,5 +98,7 @@ async function safeQuery(sql, params = []) {
 module.exports = {
   pool: { query: safeQuery },
   testConnection,
-  getConfig: () => ({ ...dbConfig }),
+  initializeDatabase, // ✅ make sure this is included here
+  getConfig: () => ({ ...dbConfig })
 };
+
