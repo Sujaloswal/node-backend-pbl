@@ -9,8 +9,16 @@ require('dotenv').config();
 // Initialize the app
 const app = express();
 
-// Middleware
-app.use(cors());
+// Set the Netlify URL
+const NETLIFY_URL = process.env.NETLIFY_URL || 'https://endearing-biscuit-0879f0.netlify.app';
+
+// Configure CORS with specific options
+app.use(cors({
+  origin: [NETLIFY_URL, 'http://localhost:3000', 'http://localhost:5000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Serve static files from the 'public' directory
@@ -74,7 +82,9 @@ app.get('/api/health', async (req, res) => {
         user: process.env.DB_USER,
         database: process.env.DB_NAME,
         port: process.env.DB_PORT || 3306
-      }
+      },
+      netlifyUrl: NETLIFY_URL,
+      corsEnabled: true
     });
   } catch (error) {
     res.json({
@@ -264,10 +274,8 @@ app.post('/api/login', async (req, res) => {
     
     console.log(`User login successful: ${email}`);
     
-    // Flask application URL for direct redirection
-    // Use environment variable or default to Netlify URL
-    const netlifyUrl = process.env.NETLIFY_URL || 'https://your-netlify-app-url.netlify.app';
-    const redirectUrl = `${netlifyUrl}/?token=${token}&username=${encodeURIComponent(user.username)}&email=${encodeURIComponent(user.email)}&user_id=${user.id}`;
+    // Use the Netlify URL for redirection
+    const redirectUrl = `${NETLIFY_URL}/?token=${token}&username=${encodeURIComponent(user.username)}&email=${encodeURIComponent(user.email)}&user_id=${user.id}`;
     
     res.json({
       success: true,
@@ -326,6 +334,17 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
+// Status route for frontend connectivity testing
+app.get('/status', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Backend is running',
+    timestamp: new Date().toISOString(),
+    netlifyConnected: true,
+    netlifyUrl: NETLIFY_URL
+  });
+});
+
 // Initialize the database and start the server
 const PORT = process.env.PORT || 5001;
 
@@ -365,6 +384,7 @@ async function startServer() {
     console.log('Database host:', process.env.DB_HOST || 'not set');
     console.log('Database name:', process.env.DB_NAME || 'not set');
     console.log('Database user:', process.env.DB_USER || 'not set');
+    console.log('Netlify URL:', NETLIFY_URL);
     console.log('====================================\n');
     
     // Test database connection
@@ -411,6 +431,7 @@ async function startServer() {
       console.log(`API Base URL: http://localhost:${PORT}/api`);
       console.log(`User list: http://localhost:${PORT}/api/users`);
       console.log(`Database Status: ${isDatabaseAvailable ? '✅ Connected' : '❌ Disconnected (will retry)'}`);
+      console.log(`Netlify Frontend: ${NETLIFY_URL}`);
       console.log(`====================================\n`);
     }).on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
@@ -427,6 +448,7 @@ async function startServer() {
           console.log(`API Base URL: http://localhost:${alternativePort}/api`);
           console.log(`User list: http://localhost:${alternativePort}/api/users`);
           console.log(`Database Status: ${isDatabaseAvailable ? '✅ Connected' : '❌ Disconnected (will retry)'}`);
+          console.log(`Netlify Frontend: ${NETLIFY_URL}`);
           console.log(`====================================\n`);
         }).on('error', (err) => {
           console.error(`\n❌ Failed to start server: ${err.message}\n`);
@@ -490,4 +512,4 @@ function scheduleReconnect() {
   }, reconnectInterval);
 }
 
-startServer(); 
+startServer();
